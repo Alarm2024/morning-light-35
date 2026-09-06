@@ -22,6 +22,7 @@ export default function App() {
   const [result, setResult] = useState<ResearchRecord | null>(null);
   const [history, setHistory] = useState<ResearchRecord[]>([]);
   const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
+  const [researchProviders, setResearchProviders] = useState<string[]>([]);
 
   async function refreshHistory() {
     try {
@@ -36,7 +37,10 @@ export default function App() {
   useEffect(() => {
     fetch('/api/health')
       .then((r) => r.json())
-      .then((d) => setKeyPresent(Boolean(d.linkupKey)))
+      .then((d) => {
+        setKeyPresent(Boolean(d.tavilyKey || d.linkupKey));
+        setResearchProviders(Array.isArray(d.researchProviders) ? d.researchProviders : []);
+      })
       .catch(() => setKeyPresent(null));
     refreshHistory();
   }, []);
@@ -74,7 +78,7 @@ export default function App() {
           </div>
         </div>
         <div className="pill">
-          Linkup key: {keyPresent === null ? '…' : keyPresent ? 'set' : 'missing'}
+          Research: {keyPresent === null ? '…' : keyPresent ? researchProviders.join(' + ') || 'ready' : 'missing key'}
         </div>
       </header>
 
@@ -93,7 +97,7 @@ export default function App() {
             {loading ? 'Researching…' : 'Research'}
           </button>
         </div>
-        <p className="hint">Public happy path — no login. Two Linkup searches when angles are missing.</p>
+        <p className="hint">Public happy path — no login. Two research searches when angles are missing (Tavily and/or Linkup).</p>
       </form>
 
       {error && <div className="banner error">{error}</div>}
@@ -188,7 +192,7 @@ export default function App() {
 
       <footer>
         <span>35 / Morning light</span>
-        <span>Hackathon MVP · Linkup search · local JSON store</span>
+        <span>Hackathon MVP · Tavily + Linkup search · local JSON store</span>
       </footer>
     </div>
   );

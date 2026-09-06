@@ -1,27 +1,43 @@
 import { loadEnvFile } from './env.js';
 loadEnvFile();
 
-const keySet = Boolean(process.env.LINKUP_API_KEY);
-console.log(`LINKUP_API_KEY: ${keySet ? 'set' : 'missing'}`);
+import { configuredProviders, hasResearchProvider } from './providers/index.js';
+import { linkupSearch } from './providers/linkup.js';
+import { tavilySearch } from './providers/tavily.js';
 
-if (!keySet) {
-  console.log('Smoke skipped (no key). HTTP status: n/a');
+const providers = configuredProviders();
+console.log(`Research providers configured: ${providers.length ? providers.join(', ') : 'none'}`);
+console.log(`TAVILY_API_KEY: ${process.env.TAVILY_API_KEY ? 'set' : 'missing'}`);
+console.log(`LINKUP_API_KEY: ${process.env.LINKUP_API_KEY ? 'set' : 'missing'}`);
+
+if (!hasResearchProvider()) {
+  console.log('Smoke skipped (no research API key). HTTP status: n/a');
   process.exit(0);
 }
 
-const res = await fetch('https://api.linkup.so/v1/search', {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${process.env.LINKUP_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    q: 'Solana USDC mint overview',
-    depth: 'standard',
-    outputType: 'sourcedAnswer',
-    includeImages: false,
-  }),
-});
+const query = 'Solana USDC mint overview';
+let exitCode = 0;
 
-console.log(`Smoke Linkup HTTP status: ${res.status}`);
-process.exit(res.ok ? 0 : 1);
+if (process.env.TAVILY_API_KEY) {
+  try {
+    const result = await tavilySearch(query, 'standard');
+    console.log(`Smoke Tavily: ok (${result.sources.length} sources)`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(`Smoke Tavily: failed (${message.slice(0, 120)})`);
+    exitCode = 1;
+  }
+}
+
+if (process.env.LINKUP_API_KEY) {
+  try {
+    const result = await linkupSearch(query, 'standard');
+    console.log(`Smoke Linkup: ok (${result.sources.length} sources)`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(`Smoke Linkup: failed (${message.slice(0, 120)})`);
+    exitCode = 1;
+  }
+}
+
+process.exit(exitCode);
