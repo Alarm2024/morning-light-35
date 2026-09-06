@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { linkupSearch } from './linkup.js';
+import { researchSearch } from './providers/index.js';
 import { saveFinding } from './store.js';
 import type { ResearchRecord, ResearchResponse, SourceHit, Verdict } from './types.js';
 
@@ -60,7 +60,7 @@ function scoreVerdict(text: string, missing: string[], sourceCount: number): { v
 
 export async function runResearch(input: string): Promise<ResearchResponse> {
   const firstQuery = buildFirstQuery(input);
-  const first = await linkupSearch(firstQuery, 'standard');
+  const first = await researchSearch(firstQuery, 'standard');
 
   const firstBlob = blobOf(first.answer, first.sources);
   const missingAngles = detectMissingAngles(firstBlob);
@@ -71,7 +71,7 @@ export async function runResearch(input: string): Promise<ResearchResponse> {
 
   if (missingAngles.length > 0) {
     secondQuery = buildSecondQuery(input, missingAngles);
-    const second = await linkupSearch(secondQuery, 'standard');
+    const second = await researchSearch(secondQuery, 'standard');
     secondAnswer = second.answer;
     for (const s of second.sources) sources.push({ ...s, pass: 2 });
   }

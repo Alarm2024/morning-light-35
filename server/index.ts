@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
+import { configuredProviders, hasResearchProvider } from './providers/index.js';
 import { runResearch } from './research.js';
 import { getFinding, listFindings } from './store.js';
 
@@ -16,10 +17,13 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
+  const providers = configuredProviders();
   res.json({
     ok: true,
     name: '35 / Morning light',
     linkupKey: Boolean(process.env.LINKUP_API_KEY),
+    tavilyKey: Boolean(process.env.TAVILY_API_KEY),
+    researchProviders: providers,
   });
 });
 
@@ -43,8 +47,8 @@ app.post('/api/research', async (req, res) => {
       res.status(400).json({ error: 'Provide a Solana mint or token/pool query' });
       return;
     }
-    if (!process.env.LINKUP_API_KEY) {
-      res.status(503).json({ error: 'LINKUP_API_KEY is not set on the server' });
+    if (!hasResearchProvider()) {
+      res.status(503).json({ error: 'No research API key configured (set TAVILY_API_KEY and/or LINKUP_API_KEY)' });
       return;
     }
     const result = await runResearch(query);
@@ -67,5 +71,7 @@ app.get('*', (req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`35 Morning light API on http://127.0.0.1:${PORT}`);
+  console.log(`Research providers: ${configuredProviders().join(', ') || 'none'}`);
+  console.log(`TAVILY_API_KEY: ${process.env.TAVILY_API_KEY ? 'set' : 'missing'}`);
   console.log(`LINKUP_API_KEY: ${process.env.LINKUP_API_KEY ? 'set' : 'missing'}`);
 });
